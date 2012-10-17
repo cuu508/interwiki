@@ -4,10 +4,9 @@ interwiki
 Script for analyzing interwiki links from Wikipedia. 
 
 Given wikipedias for English and language X (currently hardcoded to Latvian),
-this script will prepare a list of articles that:
-
- * have more than 50 interwiki links in English wikipedia
- * have no corresponding article in language X wikipedia
+this script will prepare a list of articles that have more than 50 interwiki 
+links in English wikipedia. For each such article it will look up corresponding
+article in language X and its size in bytes.
 
 This tool can be used to come up with priorities--which articles to write 
 first!
