@@ -179,9 +179,9 @@ for article_id, title in latvian_article_titles.items():
     title_underscores = title.replace(" ", "_")
     latvian_article_titles_inverse.setdefault(title_underscores, []).append(article_id)
 
-prog = re.compile("\(\d+,(\d+),%s,[^)]*,(\d+),\d+,NULL\)" % SM)
-# Matched pattern example: (0,        'Dzeltenā Jūra', 9300)
-#                           namespace lv_title         size
+prog = re.compile("\(\d+,(\d+),%s,[^)]*,(\d+),\d+,[^,]+\)" % SM)
+# Matched pattern example: (1,  0,        'Dzeltenā Jūra', 9300)
+#                           id, namespace lv_title         size
 
 for line in read_gzip_with_progress(LV_PAGE_FILENAME):
     for namespace, title, size in re.findall(prog, line):
