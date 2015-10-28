@@ -38,14 +38,15 @@ for root, filename in [(EN_DUMPS_ROOT, CATEGORYLINKS_FILENAME),
                        (EN_DUMPS_ROOT, PAGE_FILENAME),
                        (LV_DUMPS_ROOT, LV_PAGE_FILENAME)]:
     if not os.path.exists(filename):
-        user_says = raw_input("File '%s' not found. Download? (y/n) " % filename)
+        s = "File '%s' not found. Download? (y/n) " % filename
+        user_says = raw_input(s)
         url = "%s%s" % (root, filename)
         if user_says.lower() == "y":
             def progress(count, block_size, total_size):
-              percent = int(count * block_size * 100 / total_size)
-              sys.stdout.write("%2d%%" % percent)
-              sys.stdout.write("\b\b\b")
-              sys.stdout.flush()
+                percent = int(count * block_size * 100 / total_size)
+                sys.stdout.write("%2d%%" % percent)
+                sys.stdout.write("\b\b\b")
+                sys.stdout.flush()
 
             print "Downloading %s ... " % url,
             urllib.urlretrieve(url, filename, reporthook=progress)
@@ -54,6 +55,7 @@ for root, filename in [(EN_DUMPS_ROOT, CATEGORYLINKS_FILENAME),
         else:
             print "Please download %s" % url
             sys.exit(1)
+
 
 def read_gzip_with_progress(filename, expected_line_count=10000):
     """Yield lines from text file, print progress information to stdout. """
@@ -74,6 +76,7 @@ def read_gzip_with_progress(filename, expected_line_count=10000):
         yield line
 
     print "\nLines read: %d" % line_no
+
 
 def get_page_ids_for_category(category_title, depth=ITERATIONS):
     """
@@ -109,19 +112,24 @@ def get_page_ids_for_category(category_title, depth=ITERATIONS):
 
             for page_id, category_title in re.findall(prog, line):
                 page_id = int(page_id)
-                # If this page to belongs to one of the categories we're interestend in
-                # and it hasn't been already marked as qualifying...
-                if category_title in subcategory_titles and not page_id in page_ids:
-                    # we mark it as qualifying
-                    page_ids.add(page_id)
-                    # and add it to the set of possible categories that we'll
-                    # have to check and look up titles for in next step
-                    possible_category_ids.add(page_id)
-                    parent_titles[page_id] = category_title
+                # If this page to belongs to one of the categories we're
+                # interestend in and it hasn't been already marked as
+                # qualifying...
+                if category_title in subcategory_titles:
+                    if page_id not in page_ids:
+                        # we mark it as qualifying
+                        page_ids.add(page_id)
+                        # and add it to the set of possible categories that
+                        # we'll have to check and look up titles for in next
+                        # step
+                        possible_category_ids.add(page_id)
+                        parent_titles[page_id] = category_title
 
-        print "After parsing categorylinks, we have %d new qualifying page ids" % len(possible_category_ids)
+        tmpl = "After parsing categorylinks got %d new qualifying page ids"
+        print tmpl % len(possible_category_ids)
 
-        # Look up namespaces and titles for page_ids in "possible_category_ids" set
+        # Look up namespaces and titles for page_ids
+        # in "possible_category_ids" set
         # Matched pattern example: (123,              0, 'Dzeltenā Jūra'
         #                           article_id namespace  english_title
         prog = re.compile("\((\d+),(\d+),%s" % SM)
@@ -131,7 +139,8 @@ def get_page_ids_for_category(category_title, depth=ITERATIONS):
                 if article_id in possible_category_ids and namespace == "14":
                     # It's a category! Add it to our subcategory titles
                     subcategory_titles.add(title)
-                    newfound_subcategories.append("%s->%s" % (parent_titles[article_id], title))
+                    title_pair = "%s->%s" % (parent_titles[article_id], title)
+                    newfound_subcategories.append(title_pair)
 
         print "Found subcategories: %s" % ", ".join(newfound_subcategories)
     return page_ids
@@ -146,7 +155,7 @@ print "Counting links..."
 #                           article_id language_code  translated_title
 prog = re.compile("\((\d+),'(\w+)',%s\)" % SM)
 counts = {}
-latvian_article_titles = {}
+lv_article_titles = {}
 found_ids = set([])
 
 for line in read_gzip_with_progress(LANGLINKS_FILENAME, 499):
@@ -154,13 +163,13 @@ for line in read_gzip_with_progress(LANGLINKS_FILENAME, 499):
 
         article_id = int(article_id)
         if qualifying_page_ids is not None:
-            if not article_id in qualifying_page_ids:
+            if article_id not in qualifying_page_ids:
                 # This article is not in any of the categories we're interested
                 # in, so skip.
                 continue
 
         if lang_code == "lv":
-            latvian_article_titles[article_id] = title
+            lv_article_titles[article_id] = title
 
         counts[article_id] = counts.get(article_id, 0) + 1
         # Use "==" instead of ">=" so each article is counted exactly once.
@@ -173,11 +182,11 @@ qualifying_page_ids = None
 
 print "Looking up Latvian page sizes"
 
-latvian_article_sizes = {}
-latvian_article_titles_inverse = {}
-for article_id, title in latvian_article_titles.items():
+lv_article_sizes = {}
+lv_titles_inverse = {}
+for article_id, title in lv_article_titles.items():
     title_underscores = title.replace(" ", "_")
-    latvian_article_titles_inverse.setdefault(title_underscores, []).append(article_id)
+    lv_titles_inverse.setdefault(title_underscores, []).append(article_id)
 
 prog = re.compile("\(\d+,(\d+),%s,[^)]*,(\d+),\d+,[^,]+\)" % SM)
 # Matched pattern example: (1,  0,        'Dzeltenā Jūra', 9300)
@@ -189,9 +198,9 @@ for line in read_gzip_with_progress(LV_PAGE_FILENAME):
             # Only consider articles in "default" namespace
             continue
 
-        if title in latvian_article_titles_inverse:
-            for article_id in latvian_article_titles_inverse[title]:
-                latvian_article_sizes[article_id] = int(size)
+        if title in lv_titles_inverse:
+            for article_id in lv_titles_inverse[title]:
+                lv_article_sizes[article_id] = int(size)
 
 print "Looking up titles..."
 
@@ -212,8 +221,8 @@ for line in read_gzip_with_progress(PAGE_FILENAME, 2212):
         if article_id in found_ids:
             lines.append((counts[article_id],
                           title,
-                          latvian_article_titles.get(article_id, "---"),
-                          latvian_article_sizes.get(article_id, "---")))
+                          lv_article_titles.get(article_id, "---"),
+                          lv_article_sizes.get(article_id, "---")))
 
 lines.sort()
 out = open('titles.txt', 'w')
@@ -226,4 +235,3 @@ out.close()
 
 print "Done, titles saved in file 'titles.txt'."
 print "Skipped %d titles." % skipped
-
